@@ -182,6 +182,33 @@ date_iso: 2026-08-06
 
 Revisamos el [[Flujo de caja]] del mes.
 MD
+# A person mentioned in two journals: one dated by an UNQUOTED date_iso
+# (datetime.date) and one by creationDate (str). person.py used to max() the
+# mixed list and raise TypeError, aborting the run.
+cat > "$V/👤 CRM/Luis Gómez.md" <<'MD'
+---
+type: person
+relationship: proveedor
+---
+
+Luis coordina las entregas del proveedor de equipos.
+MD
+cat > "$V/📓 Diarios/2026-08/2026-08-06.md" <<'MD'
+---
+type: journal
+date_iso: 2026-08-06
+---
+
+Llamada corta con [[Luis Gómez]] por la entrega de los equipos.
+MD
+cat > "$V/📓 Diarios/2026-08/2026-08-07.md" <<'MD'
+---
+creationDate: 2026-08-07T21:10
+type: journal
+---
+
+[[Luis Gómez]] confirmó la fecha de entrega.
+MD
 # graphify's output folder sits inside the vault and holds generated .md
 # reports full of wikilinks. It is tool output, not notes: it must not be
 # indexed nor count as a mention.
@@ -243,6 +270,7 @@ plan = fm_of("📝 Notas/Plan comercial.md")
 sistema = fm_of("📝 Notas/Sistema de archivo.md")
 junta = fm_of("📝 Notas/Junta directiva.md")
 concept = fm_of("📝 Notas/Flujo de caja.md")
+luis = fm_of("👤 CRM/Luis Gómez.md")
 generated = fm_of("graphify-out/wiki/Flujo de caja.md")
 
 # 1. journal extractor: floor NAME -> 34-floor number, Spanish and English
@@ -283,6 +311,12 @@ check(concept.get("concept_last_mentioned_iso") == "2026-08-06",
 check(concept.get("concept_mention_count") == 1,
       f"concept mention count == 1, graphify-out/ not counted (got {concept.get('concept_mention_count')!r})")
 check("concept_mention_count" not in generated, "graphify-out/ .md was not extracted")
+
+# 4d. person with mixed date types (unquoted date_iso + creationDate)
+check(luis.get("person_journal_mention_count") == 2,
+      f"person mentioned in 2 journals with mixed date types == 2 (got {luis.get('person_journal_mention_count')!r})")
+check(luis.get("person_last_journal_iso") == "2026-08-07",
+      f"person last journal iso == '2026-08-07' (got {luis.get('person_last_journal_iso')!r})")
 
 # 5. an explicit extractor beats an alias
 check(plan.get("plan_marker") == "custom-extractor", f"type: plan -> the user's plan.py, not the strategy alias (got {plan!r})")

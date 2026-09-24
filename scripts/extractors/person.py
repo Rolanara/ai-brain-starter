@@ -89,6 +89,11 @@ def _build_journal_index():
             continue
 
         date_iso = fm.get("date_iso") or iso_date_from(fm.get("creationDate"))
+        # PyYAML parses an unquoted `date_iso: 2026-08-12` into datetime.date,
+        # while the creationDate fallback yields a str. Mixed types reach max()
+        # below and raise TypeError, aborting the whole run. Normalize to str.
+        if date_iso is not None and not isinstance(date_iso, str):
+            date_iso = date_iso.isoformat() if hasattr(date_iso, "isoformat") else str(date_iso)
         # The journal writes the floor's NAME (`floor: Hope` / `floor: Esperanza`);
         # `floor_num` only exists once the journal extractor has run, and on an
         # older scale if it ran long ago. Translate the name first, then fall
