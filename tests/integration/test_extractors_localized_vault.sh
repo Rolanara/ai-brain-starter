@@ -155,6 +155,44 @@ type: sistema
 
 Cómo se organizan las carpetas del vault y qué va en cada una, con ejemplos.
 MD
+# A Spanish meeting note dated with `fecha:` (no `date:` key) — the key the
+# Spanish setup interview writes.
+cat > "$V/📝 Notas/Junta directiva.md" <<'MD'
+---
+type: reunion
+fecha: 2026-08-05
+---
+
+Junta directiva mensual. Asistió [[Ana Pérez]].
+MD
+# A concept, linked from a note whose `date_iso` is UNQUOTED (PyYAML loads it
+# as datetime.date) and from one whose date comes from creationDate (a str).
+# Mixed types used to reach max()/min() and raise TypeError.
+cat > "$V/📝 Notas/Flujo de caja.md" <<'MD'
+---
+type: concept
+---
+
+Qué entra y qué sale de la caja, y cuándo.
+MD
+cat > "$V/📝 Notas/Cierre de mes.md" <<'MD'
+---
+date_iso: 2026-08-06
+---
+
+Revisamos el [[Flujo de caja]] del mes.
+MD
+# graphify's output folder sits inside the vault and holds generated .md
+# reports full of wikilinks. It is tool output, not notes: it must not be
+# indexed nor count as a mention.
+mkdir -p "$V/graphify-out/wiki"
+cat > "$V/graphify-out/wiki/Flujo de caja.md" <<'MD'
+---
+type: concept
+---
+
+Generated page. [[Flujo de caja]] [[Ana Pérez]]
+MD
 
 # ── Run extraction, then the engine ─────────────────────────────────────
 # VAULT_ROOT_FORCE=1: the copied extractors live under $STARTER (their
@@ -203,6 +241,9 @@ person = fm_of("👤 CRM/Ana Pérez.md")
 meeting = fm_of("📝 Notas/Comité de gerencia.md")
 plan = fm_of("📝 Notas/Plan comercial.md")
 sistema = fm_of("📝 Notas/Sistema de archivo.md")
+junta = fm_of("📝 Notas/Junta directiva.md")
+concept = fm_of("📝 Notas/Flujo de caja.md")
+generated = fm_of("graphify-out/wiki/Flujo de caja.md")
 
 # 1. journal extractor: floor NAME -> 34-floor number, Spanish and English
 check(j1.get("floor_num") == 31, f"journal 'Entusiasmo' -> floor_num 31 (got {j1.get('floor_num')!r})")
@@ -230,6 +271,18 @@ check(meeting.get("meeting_date_iso") == "2026-08-02" and "Ana Pérez" in (meeti
 check("Cerrar el presupuesto esta semana" in (meeting.get("meeting_decisions") or []),
       "meeting extractor read the Spanish '## Decisiones' section")
 check("reference_topic" in sistema or "word_count" in sistema, "type: sistema -> reference extractor")
+
+# 4b. a Spanish meeting dated with `fecha:` gets its date, not the mtime
+check(junta.get("meeting_date_iso") == "2026-08-05",
+      f"type: reunion with only `fecha:` -> meeting_date_iso 2026-08-05 (got {junta.get('meeting_date_iso')!r})")
+
+# 4c. concept backlinks: unquoted date_iso (datetime.date) is normalized, and
+#     graphify-out/ is neither indexed nor counted as a mention
+check(concept.get("concept_last_mentioned_iso") == "2026-08-06",
+      f"concept last mention from unquoted date_iso == '2026-08-06' (got {concept.get('concept_last_mentioned_iso')!r})")
+check(concept.get("concept_mention_count") == 1,
+      f"concept mention count == 1, graphify-out/ not counted (got {concept.get('concept_mention_count')!r})")
+check("concept_mention_count" not in generated, "graphify-out/ .md was not extracted")
 
 # 5. an explicit extractor beats an alias
 check(plan.get("plan_marker") == "custom-extractor", f"type: plan -> the user's plan.py, not the strategy alias (got {plan!r})")
